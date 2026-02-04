@@ -1,0 +1,19 @@
+name: Rust Build
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout code
+        uses: actions/checkout@v4
+      - name: build release
+        run: cargo build --release
+      - name: upload binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: neo
+          path: target/release/neo
