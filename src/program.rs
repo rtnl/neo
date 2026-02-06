@@ -3,6 +3,7 @@ use crate::mapping::{Mapping, MappingDefault};
 use crate::operation::Operation;
 use crate::request::Request;
 use owo_colors::OwoColorize;
+use std::env;
 use std::io::{Error, ErrorKind, Result};
 use std::sync::Arc;
 use strum::IntoEnumIterator;
@@ -64,7 +65,18 @@ impl Program {
         let stdout = io::stdout();
         let mut writer = io::BufWriter::new(stdout);
 
-        let text = format!("{} {} ", "neo".green().bold(), "|".bright_black());
+        let user = whoami::username().unwrap_or("?".to_string());
+        let host = whoami::hostname().unwrap_or("localhost".to_string());
+        let path = format!("{}", env::current_dir().unwrap().display());
+
+        let text = format!(
+            "---- {} [{}@{}:{}]\n{} ",
+            "neo".green().bold(),
+            user.yellow(),
+            host.yellow(),
+            path.yellow(),
+            "$".bright_black()
+        );
 
         writer.write_all(text.as_bytes()).await.unwrap();
         writer.flush().await.unwrap();
