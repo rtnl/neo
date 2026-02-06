@@ -1,10 +1,8 @@
 use crate::executor::Executor;
-use crate::mapping::{Mapping, MappingDefault};
-use crate::operation::Operation;
 use crate::request::Request;
 use owo_colors::OwoColorize;
 use std::env;
-use std::io::{Error, ErrorKind, Result};
+use std::io::Result;
 use std::sync::Arc;
 use strum::IntoEnumIterator;
 use tokio::io;
@@ -49,31 +47,23 @@ impl Program {
                 None => continue,
             };
 
-            let operation = match self.get_operation_from_request(&request).await {
-                Ok(value) => value,
-                Err(err) => {
-                    println!("error finding operation: {}", err);
-                    continue;
-                }
-            };
-
-            self.executor.push_operation(operation).await;
+            self.executor.handle_request(request).await;
         }
     }
 
     async fn prompt(&self) {
-        let stdout = io::stdout();
-        let mut writer = io::BufWriter::new(stdout);
+        let mut writer = io::BufWriter::new(io::stderr());
 
         let user = whoami::username().unwrap_or("?".to_string());
         let host = whoami::hostname().unwrap_or("localhost".to_string());
         let path = format!("{}", env::current_dir().unwrap().display());
 
         let text = format!(
-            "---- {} [{}@{}:{}]\n{} ",
+            "{} {} [{}@{}:{}]\n{} ",
+            "###".bright_black(),
             "neo".green().bold(),
-            user.yellow(),
-            host.yellow(),
+            user.purple(),
+            host.bright_purple(),
             path.yellow(),
             "$".bright_black()
         );
@@ -96,21 +86,5 @@ impl Program {
         let args: Vec<String> = parts[1..].iter().map(ToString::to_string).collect();
 
         Ok(Some(Request::new(key, args)))
-    }
-
-    async fn get_operation_from_request(&self, request: &Request) -> Result<Operation> {
-        for operation in Operation::iter() {
-            let mapping = MappingDefault {};
-
-            if mapping
-                .get_operation_aliases(operation)
-                .iter()
-                .any(|it| it == request.get_key())
-            {
-                return Ok(operation);
-            }
-        }
-
-        Err(Error::new(ErrorKind::NotFound, "operation not found"))
     }
 }

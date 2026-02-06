@@ -11,8 +11,10 @@ pub struct MappingDefault {}
 impl Mapping for MappingDefault {
     fn get_operation_aliases(&self, operation: Operation) -> Vec<String> {
         match operation {
+            Operation::None => vec![],
             Operation::FileRead => vec![str!("file-read")],
             Operation::FileCopy => vec![str!("file-copy")],
+            Operation::CommandRun => vec![str!("command-run")],
         }
     }
 }
