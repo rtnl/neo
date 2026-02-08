@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+clap = { version = "4.5.57", features = ["derive"] }
 owo-colors = "4.2.3"
 str-macro = "1.0.1"
 strum = { version = "0.27.2", features = ["derive", "strum_macros"] }

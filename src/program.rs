@@ -1,5 +1,7 @@
+use crate::cli::{Cli, CliCommand};
 use crate::executor::Executor;
 use crate::request::Request;
+use clap::Parser;
 use owo_colors::OwoColorize;
 use std::env;
 use std::io::Result;
@@ -7,6 +9,8 @@ use std::sync::Arc;
 use strum::IntoEnumIterator;
 use tokio::io;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt};
+
+const GIT_HASH: Option<&str> = option_env!("GIT_HASH");
 
 pub struct Program {
     executor: Arc<Executor>,
@@ -20,6 +24,26 @@ impl Program {
     }
 
     pub async fn launch(self: Arc<Self>) {
+        let cli = Cli::parse();
+
+        match cli.get_command().unwrap_or(CliCommand::Interactive) {
+            CliCommand::Interactive => {
+                self.launch_interactive().await;
+            }
+            CliCommand::Run { .. } => {}
+            CliCommand::Version => {
+                self.launch_version().await;
+            }
+        }
+    }
+
+    async fn launch_run(self: Arc<Self>) {}
+
+    async fn launch_version(self: Arc<Self>) {
+        eprintln!("version->#{}", &GIT_HASH.unwrap_or("???????")[0..7]);
+    }
+
+    async fn launch_interactive(self: Arc<Self>) {
         let stdin = io::stdin();
         let mut reader = io::BufReader::new(stdin);
 
