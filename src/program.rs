@@ -2,11 +2,14 @@ use crate::cli::{Cli, CliCommand};
 use crate::executor::Executor;
 use crate::request::Request;
 use clap::Parser;
+use crossterm::cursor::{MoveTo, MoveToColumn};
+use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
+use crossterm::terminal::{Clear, ClearType};
+use crossterm::{event, terminal, ExecutableCommand};
 use owo_colors::OwoColorize;
 use std::env;
-use std::io::Result;
+use std::io::{stdout, Result, Write};
 use std::sync::Arc;
-use strum::IntoEnumIterator;
 use tokio::io;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt};
 
@@ -44,16 +47,69 @@ impl Program {
     }
 
     async fn launch_interactive(self: Arc<Self>) {
-        let stdin = io::stdin();
-        let mut reader = io::BufReader::new(stdin);
-
         loop {
+            let mut flag_exit = false;
+            let mut input = String::new();
+
             self.prompt().await;
 
-            let mut input = String::new();
-            reader.read_line(&mut input).await.unwrap();
-            if input.is_empty() {
+            terminal::enable_raw_mode().unwrap();
+
+            loop {
+                match event::read().unwrap() {
+                    Event::Key(KeyEvent {
+                        code, modifiers, ..
+                    }) => match (code, modifiers) {
+                        (KeyCode::Char('c'), KeyModifiers::CONTROL) => {
+                            // Todo: implement sigint
+                        }
+                        (KeyCode::Char('d'), KeyModifiers::CONTROL) => {
+                            flag_exit = true;
+                            break;
+                        }
+                        (KeyCode::Char('l'), KeyModifiers::CONTROL) => {
+                            self.clear().await;
+                            self.reset().await;
+                            break;
+                        }
+                        (KeyCode::Char(c), KeyModifiers::NONE) => {
+                            input.push(c);
+                            print!("{}", c);
+                            stdout().flush().unwrap();
+                        }
+                        (KeyCode::Char(c), KeyModifiers::SHIFT) => {
+                            let c = c.to_ascii_uppercase();
+
+                            input.push(c);
+                            print!("{}", c);
+                            stdout().flush().unwrap();
+                        }
+                        (KeyCode::Backspace, KeyModifiers::NONE) => {
+                            if input.pop().is_some() {
+                                print!("\x08 \x08");
+                                stdout().flush().unwrap();
+                            }
+                        }
+                        (KeyCode::Enter, KeyModifiers::NONE) => {
+                            print!("\n");
+                            stdout().flush().unwrap();
+                            self.reset().await;
+                            break;
+                        }
+                        _ => {}
+                    },
+                    _ => {}
+                }
+            }
+
+            terminal::disable_raw_mode().unwrap();
+
+            if flag_exit {
                 break;
+            }
+
+            if input.is_empty() {
+                continue;
             }
 
             let input = input.trim_end();
@@ -73,6 +129,18 @@ impl Program {
 
             self.executor.handle_request(request).await;
         }
+    }
+
+    async fn clear(&self) {
+        let mut stdout = stdout();
+
+        stdout.execute(Clear(ClearType::All)).unwrap();
+    }
+
+    async fn reset(&self) {
+        let mut stdout = stdout();
+
+        stdout.execute(MoveToColumn(0)).unwrap();
     }
 
     async fn prompt(&self) {
