@@ -2,16 +2,18 @@ use crate::cli::{Cli, CliCommand};
 use crate::executor::Executor;
 use crate::request::Request;
 use clap::Parser;
-use crossterm::cursor::{MoveTo, MoveToColumn};
+use crossterm::cursor::MoveToColumn;
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
 use crossterm::terminal::{Clear, ClearType};
 use crossterm::{event, terminal, ExecutableCommand};
+use homedir::GetHomeError;
 use owo_colors::OwoColorize;
 use std::env;
 use std::io::{stdout, Result, Write};
+use std::path::{Path, PathBuf, StripPrefixError};
 use std::sync::Arc;
 use tokio::io;
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt};
+use tokio::io::AsyncWriteExt;
 
 const GIT_HASH: Option<&str> = option_env!("GIT_HASH");
 
@@ -148,7 +150,12 @@ impl Program {
 
         let user = whoami::username().unwrap_or("?".to_string());
         let host = whoami::hostname().unwrap_or("localhost".to_string());
-        let path = format!("{}", env::current_dir().unwrap().display());
+        let path = format!(
+            "{}",
+            self.reduce_path_home(env::current_dir().unwrap().as_path())
+                .unwrap()
+                .display()
+        );
 
         let text = format!(
             "{} {} [{}@{}:{}]\n{} ",
@@ -178,5 +185,24 @@ impl Program {
         let args: Vec<String> = parts[1..].iter().map(ToString::to_string).collect();
 
         Ok(Some(Request::new(key, args)))
+    }
+
+    fn reduce_path_home(&self, path: &Path) -> Result<PathBuf> {
+        let home = match homedir::my_home() {
+            Ok(v) => v,
+            Err(err) => return Ok(path.to_path_buf()),
+        };
+
+        Ok(match home {
+            Some(home_path) => match path.strip_prefix(&home_path) {
+                Ok(relative) => {
+                    let mut result = PathBuf::from("~");
+                    result.push(relative);
+                    result
+                }
+                Err(_) => path.to_path_buf(),
+            },
+            None => path.to_path_buf(),
+        })
     }
 }
