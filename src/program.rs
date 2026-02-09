@@ -76,19 +76,22 @@ impl Program {
                         }
                         (KeyCode::Char(c), KeyModifiers::NONE) => {
                             input.push(c);
-                            print!("{}", c);
+                            self.clear_line().await;
+                            print!("\r{} {}", "$".bright_black(), input);
                             stdout().flush().unwrap();
                         }
                         (KeyCode::Char(c), KeyModifiers::SHIFT) => {
                             let c = c.to_ascii_uppercase();
 
                             input.push(c);
-                            print!("{}", c);
+                            self.clear_line().await;
+                            print!("\r{} {}", "$".bright_black(), input);
                             stdout().flush().unwrap();
                         }
                         (KeyCode::Backspace, KeyModifiers::NONE) => {
                             if input.pop().is_some() {
-                                print!("\x08 \x08");
+                                self.clear_line().await;
+                                print!("\r{} {}", "$".bright_black(), input);
                                 stdout().flush().unwrap();
                             }
                         }
@@ -137,6 +140,12 @@ impl Program {
         let mut stdout = stdout();
 
         stdout.execute(Clear(ClearType::All)).unwrap();
+    }
+
+    async fn clear_line(&self) {
+        let mut stdout = stdout();
+
+        stdout.execute(Clear(ClearType::CurrentLine)).unwrap();
     }
 
     async fn reset(&self) {
