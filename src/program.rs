@@ -3,13 +3,13 @@ use crate::executor::Executor;
 use crate::request::Request;
 use clap::Parser;
 use crossterm::cursor::MoveToColumn;
-use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
+use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use crossterm::terminal::{Clear, ClearType};
-use crossterm::{event, terminal, ExecutableCommand};
+use crossterm::{ExecutableCommand, event, terminal};
 use homedir::GetHomeError;
 use owo_colors::OwoColorize;
 use std::env;
-use std::io::{stdout, Result, Write};
+use std::io::{Result, Write, stdout};
 use std::path::{Path, PathBuf, StripPrefixError};
 use std::sync::Arc;
 use tokio::io;
@@ -60,46 +60,54 @@ impl Program {
             loop {
                 match event::read().unwrap() {
                     Event::Key(KeyEvent {
-                        code, modifiers, ..
-                    }) => match (code, modifiers) {
-                        (KeyCode::Char('c'), KeyModifiers::CONTROL) => {
-                            // Todo: implement sigint
-                        }
-                        (KeyCode::Char('d'), KeyModifiers::CONTROL) => {
-                            flag_exit = true;
-                            break;
-                        }
-                        (KeyCode::Char('l'), KeyModifiers::CONTROL) => {
-                            self.clear().await;
-                            self.reset().await;
-                            break;
-                        }
-                        (KeyCode::Char(c), KeyModifiers::NONE) => {
-                            input.push(c);
-                            self.clear_line().await;
-                            print!("\r{} {}", "$".bright_black(), input);
-                            stdout().flush().unwrap();
-                        }
-                        (KeyCode::Char(c), KeyModifiers::SHIFT) => {
-                            let c = c.to_ascii_uppercase();
+                        kind,
+                        code,
+                        modifiers,
+                        ..
+                    }) => match kind {
+                        KeyEventKind::Press => {
+                            match (code, modifiers) {
+                                (KeyCode::Char('c'), KeyModifiers::CONTROL) => {
+                                    // Todo: implement sigint
+                                }
+                                (KeyCode::Char('d'), KeyModifiers::CONTROL) => {
+                                    flag_exit = true;
+                                    break;
+                                }
+                                (KeyCode::Char('l'), KeyModifiers::CONTROL) => {
+                                    self.clear().await;
+                                    self.reset().await;
+                                    break;
+                                }
+                                (KeyCode::Char(c), KeyModifiers::NONE) => {
+                                    input.push(c);
+                                    self.clear_line().await;
+                                    print!("\r{} {}", "$".bright_black(), input);
+                                    stdout().flush().unwrap();
+                                }
+                                (KeyCode::Char(c), KeyModifiers::SHIFT) => {
+                                    let c = c.to_ascii_uppercase();
 
-                            input.push(c);
-                            self.clear_line().await;
-                            print!("\r{} {}", "$".bright_black(), input);
-                            stdout().flush().unwrap();
-                        }
-                        (KeyCode::Backspace, KeyModifiers::NONE) => {
-                            if input.pop().is_some() {
-                                self.clear_line().await;
-                                print!("\r{} {}", "$".bright_black(), input);
-                                stdout().flush().unwrap();
+                                    input.push(c);
+                                    self.clear_line().await;
+                                    print!("\r{} {}", "$".bright_black(), input);
+                                    stdout().flush().unwrap();
+                                }
+                                (KeyCode::Backspace, KeyModifiers::NONE) => {
+                                    if input.pop().is_some() {
+                                        self.clear_line().await;
+                                        print!("\r{} {}", "$".bright_black(), input);
+                                        stdout().flush().unwrap();
+                                    }
+                                }
+                                (KeyCode::Enter, KeyModifiers::NONE) => {
+                                    print!("\n");
+                                    stdout().flush().unwrap();
+                                    self.reset().await;
+                                    break;
+                                }
+                                _ => {}
                             }
-                        }
-                        (KeyCode::Enter, KeyModifiers::NONE) => {
-                            print!("\n");
-                            stdout().flush().unwrap();
-                            self.reset().await;
-                            break;
                         }
                         _ => {}
                     },
