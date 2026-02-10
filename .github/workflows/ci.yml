@@ -5,7 +5,7 @@ on:
   pull_request:
 
 jobs:
-  build:
+  build-linux:
     runs-on: ubuntu-latest
     steps:
       - name: checkout code
@@ -17,8 +17,16 @@ jobs:
         with:
           name: neo
           path: target/release/neo
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: checkout code
+        uses: actions/checkout@v4
+      - name: build release
+        run: ./build/build.ps1
       - name: upload binary artifact windows_amd64
         uses: actions/upload-artifact@v4
         with:
-          name: neo.exe
-          path: target/x86_64-pc-windows-gnu/release/neo.exe
+          name: neo
+          path: target/release/neo.exe
