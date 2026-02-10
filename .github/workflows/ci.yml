@@ -12,10 +12,10 @@ jobs:
         uses: actions/checkout@v4
       - name: build release
         run: ./build/build.sh
-      - name: upload binary artifact linux_amd64
+      - name: upload binary artifact
         uses: actions/upload-artifact@v4
         with:
-          name: neo
+          name: neo_linux-amd64
           path: target/release/neo
 
   build-windows:
@@ -25,8 +25,8 @@ jobs:
         uses: actions/checkout@v4
       - name: build release
         run: ./build/build.ps1
-      - name: upload binary artifact windows_amd64
+      - name: upload binary artifact
         uses: actions/upload-artifact@v4
         with:
-          name: neo
+          name: neo_windows-amd64.exe
           path: target/release/neo.exe
