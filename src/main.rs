@@ -1,8 +1,11 @@
 mod cli;
+mod component;
 mod executor;
 mod mapping;
+mod node;
 mod operation;
 mod program;
+mod renderer;
 mod request;
 mod response;
 

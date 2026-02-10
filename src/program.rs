@@ -1,30 +1,63 @@
 use crate::cli::{Cli, CliCommand};
+use crate::component::Component;
 use crate::executor::Executor;
+use crate::node::Node;
+use crate::renderer::Renderer;
 use crate::request::Request;
 use clap::Parser;
 use crossterm::cursor::MoveToColumn;
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use crossterm::terminal::{Clear, ClearType};
-use crossterm::{ExecutableCommand, event, terminal};
-use homedir::GetHomeError;
+use crossterm::{event, terminal, ExecutableCommand};
 use owo_colors::OwoColorize;
 use std::env;
-use std::io::{Result, Write, stdout};
-use std::path::{Path, PathBuf, StripPrefixError};
+use std::io::{stdout, Result, Write};
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::io;
 use tokio::io::AsyncWriteExt;
+use tokio::sync::RwLock;
+use uuid::Uuid;
 
 const GIT_HASH: Option<&str> = option_env!("GIT_HASH");
 
+pub struct ProgramState {
+    components: Vec<Node<Component>>,
+    component_root: Uuid,
+}
+
+impl ProgramState {
+    pub fn new() -> Self {
+        let component_root = Node::new(Component::Root {});
+        let component_root_id = component_root.get_id();
+
+        Self {
+            components: vec![component_root],
+            component_root: component_root_id,
+        }
+    }
+
+    pub fn get_component_root(&self) -> Uuid {
+        self.component_root
+    }
+
+    pub fn list_component(&self) -> Vec<Uuid> {
+        self.components.iter().map(|it| it.get_id()).collect()
+    }
+}
+
 pub struct Program {
+    state: Arc<RwLock<ProgramState>>,
     executor: Arc<Executor>,
+    renderer: Arc<Renderer>,
 }
 
 impl Program {
     pub async fn new() -> Arc<Self> {
         Arc::new(Self {
+            state: Arc::new(RwLock::new(ProgramState::new())),
             executor: Executor::new().await,
+            renderer: Renderer::new().await,
         })
     }
 
@@ -49,6 +82,8 @@ impl Program {
     }
 
     async fn launch_interactive(self: Arc<Self>) {
+        self.renderer.launch(self.clone()).await;
+
         loop {
             let mut flag_exit = false;
             let mut input = String::new();
